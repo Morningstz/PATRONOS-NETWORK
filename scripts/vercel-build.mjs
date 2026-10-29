@@ -33,5 +33,6 @@ if (!env.DATABASE_URL) {
 const run = (cmd) => execSync(cmd, { stdio: "inherit", env });
 run("npx prisma generate");
 run("npx prisma migrate deploy");
-if (env.SEED_DEMO_DATA !== "false") run("npx tsx prisma/seed.ts --if-empty");
+// Seed over the direct/session connection: long multi-statement work is more reliable than via the transaction pooler
+if (env.SEED_DEMO_DATA !== "false") execSync("npx tsx prisma/seed.ts --if-empty", { stdio: "inherit", env: { ...env, DATABASE_URL: env.DIRECT_URL } });
 run("npx next build");
