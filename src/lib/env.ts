@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resolveDatabaseUrl, resolveSupabaseAnonKey, resolveSupabaseUrl } from "./db-env";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -32,6 +33,9 @@ export function env(): Env {
     throw new Error(`Invalid environment: ${parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
   }
   const d = parsed.data;
+  d.NEXT_PUBLIC_SUPABASE_URL ||= resolveSupabaseUrl();
+  d.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= resolveSupabaseAnonKey();
+  d.DATABASE_URL ||= resolveDatabaseUrl();
   if (!d.DATABASE_URL && !d.POSTGRES_PRISMA_URL) throw new Error("Invalid environment: DATABASE_URL (or POSTGRES_PRISMA_URL) is required");
   cached = {
     ...d,

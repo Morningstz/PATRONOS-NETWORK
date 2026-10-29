@@ -1,10 +1,11 @@
 import "server-only";
 import { PrismaClient } from "@prisma/client";
+import { resolveDatabaseUrl } from "./db-env";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// Vercel Marketplace databases (Supabase, Neon) expose POSTGRES_PRISMA_URL (pooled, pgbouncer-safe).
-const url = process.env.POSTGRES_PRISMA_URL || process.env.DATABASE_URL;
+// Vercel Marketplace databases (Supabase, Neon) expose POSTGRES_PRISMA_URL (pooled, pgbouncer-safe), possibly prefixed.
+const url = resolveDatabaseUrl();
 
 export const db =
   globalForPrisma.prisma ??
