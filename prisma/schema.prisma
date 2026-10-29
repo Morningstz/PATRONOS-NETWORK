@@ -1,0 +1,932 @@
+// PATRONOS — database schema (milestone 1 covers the full v1 data model)
+// Conventions: UUID primary keys, createdAt/updatedAt, isDemo + dataSourceId on every
+// directory record, private financial data isolated in separate tables.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pg_trgm]
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum RoleName {
+  USER
+  COMPANY_OWNER
+  ARTIST
+  GALLERY_OPERATOR
+  ADVERTISER
+  MODERATOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  CLAIMED
+  VERIFIED
+}
+
+enum CollaborationAvailability {
+  OPEN
+  SELECTIVE
+  CLOSED
+}
+
+enum CompanyCategory {
+  STARTUP
+  SME
+  ENTERPRISE
+  CREATIVE_STUDIO
+  NONPROFIT
+}
+
+enum RecordStatus {
+  ACTIVE
+  HIDDEN
+  REMOVED
+}
+
+enum MacroRegion {
+  ASIA_PACIFIC
+  EUROPE
+  AMERICAS
+  MIDDLE_EAST_AFRICA
+}
+
+enum DataSourceKind {
+  DEMO
+  MANUAL
+  CLAIM
+  IMPORT
+  PARTNER
+}
+
+enum MemberRole {
+  OWNER
+  EDITOR
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VerificationMethod {
+  DOMAIN_EMAIL
+  DOCUMENT
+  MANUAL
+  PARTNER
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  CLOSED
+}
+
+enum InquiryTarget {
+  ACQUISITION
+  ARTWORK
+  COMPANY
+  ARTIST
+  GALLERY
+}
+
+enum InquiryStatus {
+  OPEN
+  RESPONDED
+  CLOSED
+  SPAM
+}
+
+enum ArtworkAvailability {
+  AVAILABLE
+  ON_REQUEST
+  SOLD
+  NOT_FOR_SALE
+}
+
+enum ProvenanceKind {
+  CREATED
+  EXHIBITED
+  ACQUIRED
+  LISTED
+  PUBLISHED
+}
+
+enum CollaborationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
+enum PlacementLocation {
+  HOMEPAGE_SHELF
+  DIRECTORY_SPOTLIGHT
+  COUNTRY_FEATURE
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  LIVE
+  ENDED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum ConsentPurpose {
+  ANALYTICS
+  MARKETING
+  NEWSLETTER
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+// ─────────────────────────── Platform ────────────────────────────
+
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String   @unique
+  authProviderId String?  @unique // Supabase auth.users.id
+  isDemo         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  profile               Profile?
+  roles                 UserRole[]
+  companyMemberships    CompanyMember[]
+  galleryMemberships    GalleryMember[]
+  claims                CompanyClaim[]         @relation("ClaimUser")
+  claimsReviewed        CompanyClaim[]         @relation("ClaimReviewer")
+  verificationsGranted  CompanyVerification[]
+  artistProfile         Artist?
+  inquiries             Inquiry[]
+  collaborationRequests CollaborationRequest[]
+  campaigns             Campaign[]             @relation("CampaignAdvertiser")
+  campaignsApproved     Campaign[]             @relation("CampaignApprover")
+  subscriptions         Subscription[]
+  invoices              Invoice[]
+  mediaAssets           MediaAsset[]
+  consents              ConsentRecord[]
+  auditLogs             AuditLog[]
+  reports               ContentReport[]        @relation("ReportReporter")
+  reportsHandled        ContentReport[]        @relation("ReportHandler")
+  collections           Collection[]
+}
+
+model Profile {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  displayName String
+  bio         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  role      RoleName
+  grantedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+}
+
+model DataSource {
+  id        String         @id @default(uuid()) @db.Uuid
+  name      String         @unique
+  kind      DataSourceKind
+  url       String?
+  license   String?
+  notes     String?
+  createdAt DateTime       @default(now())
+
+  companies    Company[]
+  artists      Artist[]
+  galleries    Gallery[]
+  artworks     Artwork[]
+  acquisitions AcquisitionListing[]
+}
+
+model MediaAsset {
+  id          String   @id @default(uuid()) @db.Uuid
+  ownerId     String?  @db.Uuid
+  bucket      String
+  path        String
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  altText     String?
+  license     String?
+  attribution String?
+  isPrivate   Boolean  @default(false)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  owner          User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  artworkMedia   ArtworkMedia[]
+  claimEvidence  CompanyClaim[]
+  advertisements Advertisement[]
+
+  @@unique([bucket, path])
+}
+
+model ConsentRecord {
+  id           String         @id @default(uuid()) @db.Uuid
+  userId       String?        @db.Uuid
+  anonymousId  String?
+  subjectEmail String? // newsletter double opt-in; confirmation email is a milestone-2 item
+  purpose      ConsentPurpose
+  granted      Boolean
+  version      String
+  createdAt    DateTime       @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipHash     String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model ContentReport {
+  id          String       @id @default(uuid()) @db.Uuid
+  reporterId  String?      @db.Uuid
+  entityType  String
+  entityId    String
+  reason      String
+  details     String?
+  status      ReportStatus @default(OPEN)
+  handledById String?      @db.Uuid
+  handledAt   DateTime?
+  createdAt   DateTime     @default(now())
+
+  reporter  User? @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  handledBy User? @relation("ReportHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+// ─────────────────────── Geography & taxonomy ───────────────────────
+
+model Country {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String      @unique
+  iso2        String      @unique @db.Char(2)
+  macroRegion MacroRegion
+  createdAt   DateTime    @default(now())
+
+  regions      Region[]
+  cities       City[]
+  companies    Company[]
+  artists      Artist[]
+  galleries    Gallery[]
+  acquisitions AcquisitionListing[]
+  campaigns    Campaign[]
+
+  @@index([macroRegion])
+}
+
+model Region {
+  id        String @id @default(uuid()) @db.Uuid
+  countryId String @db.Uuid
+  name      String
+  slug      String
+
+  country      Country              @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  cities       City[]
+  companies    Company[]
+  acquisitions AcquisitionListing[]
+
+  @@unique([countryId, slug])
+}
+
+model City {
+  id        String  @id @default(uuid()) @db.Uuid
+  countryId String  @db.Uuid
+  regionId  String? @db.Uuid
+  name      String
+  slug      String
+
+  country   Country   @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  region    Region?   @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  companies Company[]
+  artists   Artist[]
+  galleries Gallery[]
+
+  @@unique([countryId, slug])
+  @@index([regionId])
+}
+
+model Industry {
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String  @unique
+  description String?
+  parentId    String? @db.Uuid
+
+  parent       Industry?            @relation("IndustryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Industry[]           @relation("IndustryTree")
+  companies    Company[]
+  acquisitions AcquisitionListing[]
+
+  @@index([parentId])
+}
+
+model Tag {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String       @unique
+  companies CompanyTag[]
+}
+
+// ─────────────────────────── Business ────────────────────────────
+
+model Company {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  slug               String                    @unique
+  name               String
+  tagline            String?
+  description        String?
+  website            String?
+  foundedYear        Int?
+  employeeRange      String?
+  category           CompanyCategory
+  countryId          String                    @db.Uuid
+  regionId           String?                   @db.Uuid
+  cityId             String?                   @db.Uuid
+  industryId         String                    @db.Uuid
+  verificationStatus VerificationStatus        @default(UNVERIFIED)
+  verifiedAt         DateTime?
+  collaboration      CollaborationAvailability @default(CLOSED)
+  logoHue            Int? // generated monogram colour for records without a logo
+  status             RecordStatus              @default(ACTIVE)
+  isDemo             Boolean                   @default(false)
+  dataSourceId       String                    @db.Uuid
+  deletedAt          DateTime?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  country        Country                @relation(fields: [countryId], references: [id])
+  region         Region?                @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  city           City?                  @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  industry       Industry               @relation(fields: [industryId], references: [id])
+  dataSource     DataSource             @relation(fields: [dataSourceId], references: [id])
+  tags           CompanyTag[]
+  members        CompanyMember[]
+  claims         CompanyClaim[]
+  verifications  CompanyVerification[]
+  acquisitions   AcquisitionListing[]
+  inquiries      Inquiry[]
+  collabSent     CollaborationRequest[] @relation("CollabFromCompany")
+  collabReceived CollaborationRequest[] @relation("CollabToCompany")
+  campaigns      Campaign[]
+  ads            Advertisement[]
+
+  @@index([countryId, industryId, verificationStatus])
+  @@index([cityId])
+  @@index([regionId])
+  @@index([isDemo, status])
+  @@index([collaboration])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Company_name_trgm_idx")
+}
+
+model CompanyTag {
+  companyId String @db.Uuid
+  tagId     String @db.Uuid
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, tagId])
+}
+
+model CompanyMember {
+  id        String     @id @default(uuid()) @db.Uuid
+  companyId String     @db.Uuid
+  userId    String     @db.Uuid
+  role      MemberRole @default(EDITOR)
+  createdAt DateTime   @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+}
+
+model CompanyClaim {
+  id              String       @id @default(uuid()) @db.Uuid
+  companyId       String       @db.Uuid
+  userId          String       @db.Uuid
+  status          ReviewStatus @default(PENDING)
+  workEmail       String
+  roleTitle       String
+  message         String?
+  evidenceAssetId String?      @db.Uuid // private bucket, signed URLs only
+  reviewedById    String?      @db.Uuid
+  reviewedAt      DateTime?
+  reviewNote      String?
+  createdAt       DateTime     @default(now())
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user       User        @relation("ClaimUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?       @relation("ClaimReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  evidence   MediaAsset? @relation(fields: [evidenceAssetId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([companyId])
+}
+
+model CompanyVerification {
+  id           String             @id @default(uuid()) @db.Uuid
+  companyId    String             @db.Uuid
+  method       VerificationMethod
+  status       ReviewStatus       @default(PENDING)
+  verifiedById String?            @db.Uuid
+  verifiedAt   DateTime?
+  expiresAt    DateTime?
+  privateNote  String? // never rendered publicly
+  createdAt    DateTime           @default(now())
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  verifiedBy User?   @relation(fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+}
+
+model AcquisitionListing {
+  id               String        @id @default(uuid()) @db.Uuid
+  slug             String        @unique
+  companyId        String?       @db.Uuid
+  headline         String
+  summary          String
+  industryId       String        @db.Uuid
+  countryId        String        @db.Uuid
+  regionId         String?       @db.Uuid
+  revenueRange     String? // public only when the owner opts in
+  showRevenueRange Boolean       @default(false)
+  reasonForSale    String?
+  status           ListingStatus @default(DRAFT)
+  isDemo           Boolean       @default(false)
+  dataSourceId     String        @db.Uuid
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  company    Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  industry   Industry               @relation(fields: [industryId], references: [id])
+  country    Country                @relation(fields: [countryId], references: [id])
+  region     Region?                @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  dataSource DataSource             @relation(fields: [dataSourceId], references: [id])
+  financials AcquisitionFinancials?
+  inquiries  Inquiry[]
+
+  @@index([status, countryId, industryId])
+  @@index([isDemo])
+}
+
+// Private — never selected by public queries (enforced in lib/queries + tests)
+model AcquisitionFinancials {
+  id            String   @id @default(uuid()) @db.Uuid
+  listingId     String   @unique @db.Uuid
+  currency      String   @db.Char(3)
+  askingPrice   Decimal? @db.Decimal(18, 2)
+  annualRevenue Decimal? @db.Decimal(18, 2)
+  ebitda        Decimal? @db.Decimal(18, 2)
+  updatedAt     DateTime @updatedAt
+
+  listing AcquisitionListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Inquiry {
+  id                   String        @id @default(uuid()) @db.Uuid
+  senderId             String        @db.Uuid
+  targetType           InquiryTarget
+  acquisitionListingId String?       @db.Uuid
+  artworkId            String?       @db.Uuid
+  companyId            String?       @db.Uuid
+  artistId             String?       @db.Uuid
+  galleryId            String?       @db.Uuid
+  message              String
+  status               InquiryStatus @default(OPEN)
+  createdAt            DateTime      @default(now())
+
+  sender      User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  acquisition AcquisitionListing? @relation(fields: [acquisitionListingId], references: [id], onDelete: Cascade)
+  artwork     Artwork?            @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  company     Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  artist      Artist?             @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  gallery     Gallery?            @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([targetType, status])
+}
+
+// ─────────────────────────── Creative ────────────────────────────
+
+model Artist {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  slug               String                    @unique
+  name               String
+  discipline         String
+  bio                String?
+  userId             String?                   @unique @db.Uuid
+  countryId          String                    @db.Uuid
+  cityId             String?                   @db.Uuid
+  collaboration      CollaborationAvailability @default(SELECTIVE)
+  verificationStatus VerificationStatus        @default(UNVERIFIED)
+  portraitHue        Int?
+  status             RecordStatus              @default(ACTIVE)
+  isDemo             Boolean                   @default(false)
+  dataSourceId       String                    @db.Uuid
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  user           User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  country        Country                @relation(fields: [countryId], references: [id])
+  city           City?                  @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  dataSource     DataSource             @relation(fields: [dataSourceId], references: [id])
+  artworks       Artwork[]
+  galleries      GalleryArtist[]
+  collections    Collection[]
+  inquiries      Inquiry[]
+  collabReceived CollaborationRequest[]
+
+  @@index([countryId, collaboration])
+  @@index([isDemo, status])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Artist_name_trgm_idx")
+}
+
+model Gallery {
+  id                 String             @id @default(uuid()) @db.Uuid
+  slug               String             @unique
+  name               String
+  description        String?
+  website            String?
+  countryId          String             @db.Uuid
+  cityId             String?            @db.Uuid
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  status             RecordStatus       @default(ACTIVE)
+  isDemo             Boolean            @default(false)
+  dataSourceId       String             @db.Uuid
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  country        Country                @relation(fields: [countryId], references: [id])
+  city           City?                  @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  dataSource     DataSource             @relation(fields: [dataSourceId], references: [id])
+  members        GalleryMember[]
+  artists        GalleryArtist[]
+  artworks       Artwork[]
+  collections    Collection[]
+  inquiries      Inquiry[]
+  collabReceived CollaborationRequest[]
+
+  @@index([countryId])
+  @@index([isDemo, status])
+}
+
+model GalleryMember {
+  id        String     @id @default(uuid()) @db.Uuid
+  galleryId String     @db.Uuid
+  userId    String     @db.Uuid
+  role      MemberRole @default(EDITOR)
+
+  gallery Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([galleryId, userId])
+}
+
+model GalleryArtist {
+  galleryId String @db.Uuid
+  artistId  String @db.Uuid
+
+  gallery Gallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  artist  Artist  @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([galleryId, artistId])
+}
+
+model Artwork {
+  id             String              @id @default(uuid()) @db.Uuid
+  slug           String              @unique
+  title          String
+  artistId       String              @db.Uuid
+  galleryId      String?             @db.Uuid
+  year           Int?
+  medium         String
+  dimensions     String?
+  editionSize    Int?
+  editionNumber  Int?
+  availability   ArtworkAvailability @default(ON_REQUEST)
+  priceAmount    Decimal?            @db.Decimal(14, 2)
+  priceCurrency  String?             @db.Char(3)
+  description    String?
+  aspectRatio    Float               @default(0.8) // width / height, so grids never crop
+  generativeSeed Int? // demo artworks render a generated abstract image from this seed
+  status         RecordStatus        @default(ACTIVE)
+  isDemo         Boolean             @default(false)
+  dataSourceId   String              @db.Uuid
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  artist      Artist            @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  gallery     Gallery?          @relation(fields: [galleryId], references: [id], onDelete: SetNull)
+  dataSource  DataSource        @relation(fields: [dataSourceId], references: [id])
+  media       ArtworkMedia[]
+  provenance  ProvenanceEvent[]
+  collections CollectionItem[]
+  inquiries   Inquiry[]
+
+  @@index([artistId])
+  @@index([isDemo, status, availability])
+}
+
+model ArtworkMedia {
+  id        String  @id @default(uuid()) @db.Uuid
+  artworkId String  @db.Uuid
+  assetId   String  @db.Uuid
+  position  Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  artwork Artwork    @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  asset   MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([artworkId, position])
+}
+
+model ProvenanceEvent {
+  id          String         @id @default(uuid()) @db.Uuid
+  artworkId   String         @db.Uuid
+  kind        ProvenanceKind
+  occurredOn  DateTime
+  description String
+  source      String?
+
+  artwork Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@index([artworkId, occurredOn])
+}
+
+model Collection {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique
+  title       String
+  description String?
+  artistId    String?  @db.Uuid
+  galleryId   String?  @db.Uuid
+  curatorId   String?  @db.Uuid
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  artist  Artist?          @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  gallery Gallery?         @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  curator User?            @relation(fields: [curatorId], references: [id], onDelete: SetNull)
+  items   CollectionItem[]
+}
+
+model CollectionItem {
+  collectionId String @db.Uuid
+  artworkId    String @db.Uuid
+  position     Int    @default(0)
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  artwork    Artwork    @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, artworkId])
+}
+
+model CollaborationRequest {
+  id            String              @id @default(uuid()) @db.Uuid
+  fromUserId    String              @db.Uuid
+  fromCompanyId String?             @db.Uuid
+  toArtistId    String?             @db.Uuid
+  toGalleryId   String?             @db.Uuid
+  toCompanyId   String?             @db.Uuid
+  title         String
+  brief         String
+  budgetRange   String?
+  status        CollaborationStatus @default(PENDING)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  fromUser    User     @relation(fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromCompany Company? @relation("CollabFromCompany", fields: [fromCompanyId], references: [id], onDelete: SetNull)
+  toArtist    Artist?  @relation(fields: [toArtistId], references: [id], onDelete: Cascade)
+  toGallery   Gallery? @relation(fields: [toGalleryId], references: [id], onDelete: Cascade)
+  toCompany   Company? @relation("CollabToCompany", fields: [toCompanyId], references: [id], onDelete: Cascade)
+
+  @@index([fromUserId])
+  @@index([status])
+}
+
+// ────────────────────────── Advertising ──────────────────────────
+
+model AdPlacement {
+  id           String            @id @default(uuid()) @db.Uuid
+  key          String            @unique
+  name         String
+  location     PlacementLocation
+  description  String
+  priceCents   Int
+  currency     String            @default("USD") @db.Char(3)
+  durationDays Int
+  capacity     Int // max concurrent live campaigns
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+
+  campaigns   Campaign[]
+  impressions Impression[]
+  clicks      Click[]
+}
+
+model Campaign {
+  id              String         @id @default(uuid()) @db.Uuid
+  name            String
+  advertiserId    String         @db.Uuid
+  companyId       String?        @db.Uuid
+  placementId     String         @db.Uuid
+  targetCountryId String?        @db.Uuid
+  status          CampaignStatus @default(DRAFT)
+  startsAt        DateTime
+  endsAt          DateTime
+  priceCents      Int
+  approvedById    String?        @db.Uuid
+  approvedAt      DateTime?
+  rejectionReason String?
+  isDemo          Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  advertiser    User            @relation("CampaignAdvertiser", fields: [advertiserId], references: [id], onDelete: Cascade)
+  approvedBy    User?           @relation("CampaignApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  company       Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  placement     AdPlacement     @relation(fields: [placementId], references: [id])
+  targetCountry Country?        @relation(fields: [targetCountryId], references: [id], onDelete: SetNull)
+  ads           Advertisement[]
+  impressions   Impression[]
+  clicks        Click[]
+  invoices      Invoice[]
+
+  @@index([placementId, status, startsAt, endsAt])
+  @@index([advertiserId])
+}
+
+model Advertisement {
+  id              String       @id @default(uuid()) @db.Uuid
+  campaignId      String       @db.Uuid
+  headline        String
+  body            String?
+  imageAssetId    String?      @db.Uuid
+  targetUrl       String
+  targetCompanyId String?      @db.Uuid
+  reviewStatus    ReviewStatus @default(PENDING)
+  createdAt       DateTime     @default(now())
+
+  campaign      Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  image         MediaAsset?  @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  targetCompany Company?     @relation(fields: [targetCompanyId], references: [id], onDelete: SetNull)
+  impressions   Impression[]
+  clicks        Click[]
+}
+
+// Append-only event tables. Plan rollups/partitioning before high volume.
+model Impression {
+  id              String   @id @default(uuid()) @db.Uuid
+  advertisementId String   @db.Uuid
+  campaignId      String   @db.Uuid
+  placementId     String   @db.Uuid
+  sessionHash     String
+  ipHash          String
+  isFiltered      Boolean  @default(false)
+  filterReason    String?
+  createdAt       DateTime @default(now())
+
+  advertisement Advertisement @relation(fields: [advertisementId], references: [id], onDelete: Cascade)
+  campaign      Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  placement     AdPlacement   @relation(fields: [placementId], references: [id])
+
+  @@index([campaignId, createdAt])
+  @@index([sessionHash, advertisementId, createdAt])
+}
+
+model Click {
+  id              String   @id @default(uuid()) @db.Uuid
+  advertisementId String   @db.Uuid
+  campaignId      String   @db.Uuid
+  placementId     String   @db.Uuid
+  sessionHash     String
+  ipHash          String
+  isFiltered      Boolean  @default(false)
+  filterReason    String?
+  createdAt       DateTime @default(now())
+
+  advertisement Advertisement @relation(fields: [advertisementId], references: [id], onDelete: Cascade)
+  campaign      Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  placement     AdPlacement   @relation(fields: [placementId], references: [id])
+
+  @@index([campaignId, createdAt])
+  @@index([sessionHash, advertisementId, createdAt])
+}
+
+// ──────────────────────────── Billing ────────────────────────────
+
+model Subscription {
+  id                     String             @id @default(uuid()) @db.Uuid
+  userId                 String             @db.Uuid
+  plan                   String
+  status                 SubscriptionStatus
+  provider               String
+  providerCustomerId     String?
+  providerSubscriptionId String?            @unique
+  currentPeriodEnd       DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Invoice {
+  id                String        @id @default(uuid()) @db.Uuid
+  userId            String        @db.Uuid
+  campaignId        String?       @db.Uuid
+  amountCents       Int
+  currency          String        @db.Char(3)
+  status            InvoiceStatus @default(DRAFT)
+  provider          String // "mock" in v1
+  providerInvoiceId String?       @unique
+  issuedAt          DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+}
+
+model PaymentEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  provider    String
+  eventId     String    @unique // idempotency for webhooks
+  type        String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+}

@@ -1,0 +1,434 @@
+@import "tailwindcss";
+
+/* ───────────── PATRONOS Noir — design tokens ───────────── */
+:root {
+  --bg: #0a0a0a;
+  --bg-elevated: #111111;
+  --bg-raised: #161513;
+  --surface-glass: rgba(255, 255, 255, 0.03);
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text: #f5f2ed;
+  --text-muted: #a3a3a3;
+  --text-faint: #8a8a8a;
+  --gold: #a78b71;
+  --gold-light: #c9b8a0;
+  --gold-hover: #e8d5b7;
+  --gold-tint: rgba(167, 139, 113, 0.1);
+  --gold-line: rgba(167, 139, 113, 0.4);
+  --glow: 0 0 100px rgba(167, 139, 113, 0.2);
+  --glow-card: 0 0 60px rgba(167, 139, 113, 0.3);
+  --success: #4ade80;
+  --danger: #f87171;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-elevated: var(--bg-elevated);
+  --color-raised: var(--bg-raised);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-hover: var(--gold-hover);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --radius-glass: 24px;
+  --radius-media: 20px;
+  --ease-brand: var(--ease);
+  --ease-reveal: var(--ease-reveal);
+}
+
+/* ───────────── Base ───────────── */
+@layer base {
+html {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(167, 139, 113, 0.35);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold-hover);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Links inside running text must not rely on colour alone (WCAG 1.4.1) */
+p a:not(.btn),
+li > p a:not(.btn),
+dd a:not(.btn) {
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+}
+
+@layer components {
+/* ───────────── Typography helpers ───────────── */
+.display {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.04;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  line-height: 1.4;
+}
+
+.nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────── Surfaces ───────────── */
+.bg-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.glass {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-glass);
+}
+
+@supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+  .glass {
+    background: var(--surface-glass);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Flat variant for long lists/tables (no blur — mobile performance) */
+.panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-glass);
+}
+
+.card-hover {
+  transition:
+    border-color 300ms var(--ease),
+    transform 300ms var(--ease),
+    box-shadow 300ms var(--ease);
+}
+
+.card-hover:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+
+.glow {
+  box-shadow: var(--glow);
+}
+
+/* Decorative imagery only — NEVER apply to artworks */
+.editorial-image {
+  filter: grayscale(1);
+  transition: filter 0.7s var(--ease);
+}
+
+.group:hover .editorial-image,
+.editorial-image:hover {
+  filter: grayscale(0);
+}
+
+/* ───────────── Buttons ───────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.4rem;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition:
+    background-color 300ms var(--ease),
+    border-color 300ms var(--ease),
+    color 300ms var(--ease);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn-solid {
+  background: #fff;
+  color: #0a0a0a;
+}
+
+.btn-solid:hover {
+  background: var(--gold-hover);
+}
+
+.btn-outline {
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+
+.btn-outline:hover {
+  border-color: var(--gold);
+  color: var(--gold-hover);
+}
+
+.btn-gold {
+  background: var(--gold);
+  color: #0a0a0a;
+}
+
+.btn-gold:hover {
+  background: var(--gold-hover);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.link-gold {
+  color: var(--gold-light);
+  transition: color 300ms var(--ease);
+}
+
+.link-gold:hover {
+  color: var(--gold-hover);
+}
+
+/* ───────────── Form controls ───────────── */
+.field {
+  width: 100%;
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  padding: 0.6rem 0.9rem;
+  color: var(--text);
+  font-size: 15px;
+  transition: border-color 300ms var(--ease);
+}
+
+.field::placeholder {
+  color: var(--text-faint);
+}
+
+.field:hover {
+  border-color: var(--border-strong);
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+select.field {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--gold-light) 50%), linear-gradient(135deg, var(--gold-light) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 13px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 2.2rem;
+}
+
+select.field option {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+label.label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  margin-bottom: 0.4rem;
+}
+
+/* ───────────── Chips & badges ───────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+}
+
+/* ───────────── Neural lines ───────────── */
+.node-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  animation: pulsing-branch 3s var(--ease) infinite alternate;
+}
+
+.node-flow {
+  fill: none;
+  stroke: var(--gold-light);
+  stroke-width: 1.25;
+  stroke-dasharray: 5 15;
+  opacity: 0.55;
+  animation: flow 6s linear infinite;
+}
+
+@keyframes pulsing-branch {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+}
+
+.live-dot {
+  animation: live-pulse 2s var(--ease) infinite;
+}
+
+/* ───────────── Reveal ───────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 700ms var(--ease-reveal),
+    transform 700ms var(--ease-reveal);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* No-JS: content must always be visible */
+.no-js .reveal {
+  opacity: 1;
+  transform: none;
+}
+
+/* ───────────── Shelf ───────────── */
+.shelf-track {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1.5rem;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 56px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 56px), transparent 100%);
+}
+
+.shelf-track::-webkit-scrollbar {
+  display: none;
+}
+
+.shelf-track > * {
+  scroll-snap-align: start;
+}
+
+/* Gallery-wall grid: preserves each artwork's true ratio */
+.gallery-wall {
+  columns: 1;
+  column-gap: 28px;
+}
+
+@media (min-width: 640px) {
+  .gallery-wall {
+    columns: 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .gallery-wall {
+    columns: 3;
+  }
+}
+
+.gallery-wall > * {
+  break-inside: avoid;
+  margin-bottom: 28px;
+}
+
+/* ───────────── Reduced motion ───────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  .node-line {
+    opacity: 0.55;
+  }
+}

@@ -1,0 +1,13 @@
+import { chromium } from "@playwright/test";
+const [, , path, out, w = "1440", h = "900", full = "0"] = process.argv;
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: +w, height: +h } });
+const errors = [];
+p.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+p.on("pageerror", (e) => errors.push(e.message));
+await p.goto("http://localhost:3000" + path, { waitUntil: "networkidle" });
+await p.evaluate(() => document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")));
+await p.waitForTimeout(600);
+await p.screenshot({ path: out, fullPage: full === "1" });
+if (errors.length) console.log("ERRORS:", errors.join("\n"));
+await b.close();
