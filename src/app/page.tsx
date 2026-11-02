@@ -17,6 +17,7 @@ import { ARTICLES } from "@/lib/journal";
 import { NeuralNetwork } from "@/components/home/NeuralHero";
 import { HeroSearch } from "@/components/home/HeroSearch";
 import { Satellite } from "@/components/home/Satellite";
+import { StudioTeaser } from "@/components/home/StudioTeaser";
 import { Shelf } from "@/components/ui/Shelf";
 import { Reveal } from "@/components/ui/Reveal";
 import { LivePill } from "@/components/ui/badges";
@@ -175,6 +176,8 @@ export default async function HomePage() {
           <ArtistCard key={a.id} a={a} />
         ))}
       </Shelf>
+
+      <StudioTeaser />
 
       <Shelf eyebrow="Art" title="Featured artworks" href="/art" empty={artworks.length === 0}>
         {artworks.map((a) => (

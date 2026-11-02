@@ -19,6 +19,7 @@ export type Action =
   | "company:claim"
   | "company:edit"
   | "inquiry:create"
+  | "collection:manage"
   | "collaboration:create"
   | "campaign:create"
   | "campaign:read-own"
@@ -41,6 +42,7 @@ export const PERMISSIONS: Record<Action, RoleName[] | "anyone" | "signed-in"> = 
   "company:claim": "signed-in",
   "company:edit": ["COMPANY_OWNER", ...STAFF], // owners additionally need membership (see can())
   "inquiry:create": "signed-in",
+  "collection:manage": "signed-in",
   "collaboration:create": "signed-in",
   "campaign:create": ["ADVERTISER", "COMPANY_OWNER", "ADMIN"],
   "campaign:read-own": ["ADVERTISER", "COMPANY_OWNER", "ADMIN"],

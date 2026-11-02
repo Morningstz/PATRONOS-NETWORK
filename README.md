@@ -84,3 +84,4 @@ Payments are **mock-only**. Do not add real Stripe credentials until explicit ap
 - `docs/SITEMAP_AND_DESIGN.md` — sitemap and PATRONOS Noir design system
 - `docs/BACKLOG.md` — milestone 2 and 3 backlog
 - `docs/RISKS.md` — unresolved security / architecture / compliance risks
+- `docs/STUDIO.md` — Art House: Studio (paint → animate → prompts), Art Lens, Assistant, Daily, saves/follows

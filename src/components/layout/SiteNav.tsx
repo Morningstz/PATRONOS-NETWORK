@@ -8,6 +8,7 @@ export const NAV_LINKS = [
   { href: "/companies", label: "Companies" },
   { href: "/artists", label: "Artists" },
   { href: "/art", label: "Art" },
+  { href: "/studio", label: "Studio" },
   { href: "/acquisitions", label: "Acquisitions" },
   { href: "/advertise", label: "Advertise" },
   { href: "/journal", label: "Journal" },

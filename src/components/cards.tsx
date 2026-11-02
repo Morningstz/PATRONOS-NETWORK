@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { AcquisitionCard as AcqT, ArtistCard as ArtistT, ArtworkCard as ArtworkT, CompanyCard as CompanyT } from "@/lib/queries/public";
+import { formatPrice } from "@/lib/art/assistant";
 import { GenerativeArt } from "./art/GenerativeArt";
 import { AbstractPortrait, Monogram } from "./art/Monogram";
 import { CollabChip, DemoBadge, SponsoredLabel, VerificationBadge } from "./ui/badges";
@@ -98,7 +99,10 @@ export function ArtworkCard({ a, width = "shelf" }: { a: ArtworkT; width?: "shel
         </div>
         {a.isDemo && <DemoBadge className="relative z-10 shrink-0" />}
       </div>
-      <p className="mt-1 text-[12px] tracking-[0.12em] text-gold-light uppercase">{AVAILABILITY_LABEL[a.availability]}</p>
+      <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-[12px] tracking-[0.12em] text-gold-light uppercase">
+        <span>{AVAILABILITY_LABEL[a.availability]}</span>
+        {a.availability === "AVAILABLE" && a.priceAmount && a.priceCurrency && <span className="nums tracking-normal text-ink normal-case">{formatPrice(Number(a.priceAmount), a.priceCurrency)}</span>}
+      </p>
     </article>
   );
 }

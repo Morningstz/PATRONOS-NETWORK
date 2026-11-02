@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     db.artist.findMany({ where: { isDemo: false, status: "ACTIVE" }, select: { slug: true, updatedAt: true } }),
     db.artwork.findMany({ where: { isDemo: false, status: "ACTIVE" }, select: { slug: true, updatedAt: true } }),
   ]);
-  const staticPaths = ["", "/discover", "/companies", "/industries", "/artists", "/art", "/galleries", "/acquisitions", "/collaborations", "/advertise", "/journal", "/about"];
+  const staticPaths = ["", "/discover", "/companies", "/industries", "/artists", "/art", "/studio", "/lens", "/assistant", "/daily", "/galleries", "/acquisitions", "/collaborations", "/advertise", "/journal", "/about"];
   return [
     ...staticPaths.map((p) => ({ url: `${base}${p}` })),
     ...countries.map((c) => ({ url: `${base}/discover/${c.slug}` })),

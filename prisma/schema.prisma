@@ -200,6 +200,8 @@ model User {
   reports               ContentReport[]        @relation("ReportReporter")
   reportsHandled        ContentReport[]        @relation("ReportHandler")
   collections           Collection[]
+  savedArtworks         SavedArtwork[]
+  followedArtists       FollowedArtist[]
 }
 
 model Profile {
@@ -604,6 +606,7 @@ model Artist {
   collections    Collection[]
   inquiries      Inquiry[]
   collabReceived CollaborationRequest[]
+  followers      FollowedArtist[]
 
   @@index([countryId, collaboration])
   @@index([isDemo, status])
@@ -678,6 +681,11 @@ model Artwork {
   description    String?
   aspectRatio    Float               @default(0.8) // width / height, so grids never crop
   generativeSeed Int? // demo artworks render a generated abstract image from this seed
+  // Discovery traits (from image analysis on upload; from the seed for generative demo works)
+  category       String? // Painting, Sculpture, Print, Photography, Textile, Ceramics, Digital, Mixed media
+  colorFamilies  String[]            @default([])
+  moods          String[]            @default([])
+  colorSignature Float[]             @default([]) // 15-bin colour signature for Art Lens
   status         RecordStatus        @default(ACTIVE)
   isDemo         Boolean             @default(false)
   dataSourceId   String              @db.Uuid
@@ -691,9 +699,35 @@ model Artwork {
   provenance  ProvenanceEvent[]
   collections CollectionItem[]
   inquiries   Inquiry[]
+  savedBy     SavedArtwork[]
 
   @@index([artistId])
   @@index([isDemo, status, availability])
+  @@index([category])
+}
+
+model SavedArtwork {
+  userId    String   @db.Uuid
+  artworkId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artwork Artwork @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+
+  @@id([userId, artworkId])
+  @@index([artworkId])
+}
+
+model FollowedArtist {
+  userId    String   @db.Uuid
+  artistId  String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([userId, artistId])
+  @@index([artistId])
 }
 
 model ArtworkMedia {

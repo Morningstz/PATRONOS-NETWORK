@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getArtist } from "@/lib/queries/public";
+import { isFollowing } from "@/lib/queries/art";
+import { getSessionUser } from "@/lib/auth/session";
+import { FollowButton } from "@/components/art/CollectButtons";
 import { AbstractPortrait } from "@/components/art/Monogram";
 import { ArtworkCard } from "@/components/cards";
 import { CollabChip, DemoBanner, VerificationBadge } from "@/components/ui/badges";
@@ -17,6 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ArtistPage({ params }: Props) {
   const a = await getArtist((await params).slug);
   if (!a) notFound();
+  const user = await getSessionUser();
+  const following = user ? await isFollowing(user.id, a.id) : false;
   return (
     <article>
       {a.isDemo && <DemoBanner label="DEMO — fictional artist created for demonstration." />}
@@ -35,7 +40,10 @@ export default async function ArtistPage({ params }: Props) {
           {a.galleries.length > 0 && (
             <p className="mt-6 text-[14px] text-muted">Represented by {a.galleries.map((g) => g.gallery.name).join(", ")}</p>
           )}
-          <button type="button" disabled className="btn btn-outline mt-8">Request collaboration — opening soon</button>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <FollowButton artistId={a.id} initial={following} signedIn={!!user} next={`/artists/${a.slug}`} />
+            <button type="button" disabled className="btn btn-outline">Request collaboration — opening soon</button>
+          </div>
         </div>
         <div className="group mx-auto w-full max-w-[420px] overflow-hidden rounded-[24px] border border-white/10">
           <AbstractPortrait name={a.name} hue={a.portraitHue} className="editorial-image" />

@@ -12,6 +12,8 @@
 import { randomUUID } from "node:crypto";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { purgeDemoData } from "../src/lib/demo";
+import { DISCIPLINE_CATEGORY, traitsForSeed } from "../src/lib/art/generative";
+import { backfillArtworkData, demoPriceIdr } from "./backfill";
 import { ACQUISITIONS, ARTISTS, ARTWORK_TITLES, COMPANIES, COUNTRIES, DEMO_USERS, GALLERIES, INDUSTRIES, MEDIUMS, PLACEMENTS } from "./seed-data";
 
 const db = new PrismaClient();
@@ -185,6 +187,8 @@ async function seedDemo() {
       const year = 2019 + ((t * 3) % 7);
       const ratio = ratios[(t * 5 + k) % ratios.length]!;
       const priced = availability === "AVAILABLE";
+      const seed = 101 + t * 7;
+      const traits = traitsForSeed(seed);
       const editioned = a[1] === "Printmaker" || a[1] === "Photographer";
       artworks.push({
         id,
@@ -198,11 +202,15 @@ async function seedDemo() {
         editionSize: editioned ? 10 : null,
         editionNumber: editioned ? 1 + k : null,
         availability,
-        priceAmount: priced ? new Prisma.Decimal(1200 + Math.round(r() * 18) * 400) : null,
-        priceCurrency: priced ? "USD" : null,
+        priceAmount: priced ? new Prisma.Decimal(demoPriceIdr(seed)) : null,
+        priceCurrency: priced ? "IDR" : null,
         description: `A fictional demo work by ${a[0]}, rendered by PATRONOS's generative placeholder engine so the demo needs no third-party imagery.`,
         aspectRatio: ratio,
-        generativeSeed: 101 + t * 7,
+        generativeSeed: seed,
+        category: DISCIPLINE_CATEGORY[a[1]] ?? "Mixed media",
+        colorFamilies: traits.colorFamilies,
+        moods: traits.moods,
+        colorSignature: traits.signature,
         isDemo: true,
         dataSourceId: source.id,
         createdAt: new Date(now - (36 - t) * DAY * 0.5),
@@ -301,12 +309,10 @@ async function main() {
   if (process.argv.includes("--if-empty")) {
     const marker = await db.siteSetting.findUnique({ where: { key: SEED_MARKER } });
     const realCompanies = await db.company.count({ where: { isDemo: false } });
-    if (marker) {
-      log(`demo seed skipped: already completed at ${JSON.stringify(marker.value)}`);
-      return;
-    }
-    if (realCompanies > 0) {
-      log(`demo seed skipped: database already holds ${realCompanies} real companies`);
+    if (marker || realCompanies > 0) {
+      log(marker ? `demo seed skipped: already completed at ${JSON.stringify(marker.value)}` : `demo seed skipped: database already holds ${realCompanies} real companies`);
+      const n = await backfillArtworkData(db);
+      if (n > 0) log(`backfilled discovery traits / IDR prices on ${n} artworks`);
       return;
     }
   }

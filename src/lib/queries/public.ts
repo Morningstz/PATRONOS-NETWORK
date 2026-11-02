@@ -64,6 +64,9 @@ export const artworkCardSelect = {
   aspectRatio: true,
   generativeSeed: true,
   isDemo: true,
+  category: true,
+  priceAmount: true,
+  priceCurrency: true,
   artist: { select: { name: true, slug: true } },
 } satisfies Prisma.ArtworkSelect;
 

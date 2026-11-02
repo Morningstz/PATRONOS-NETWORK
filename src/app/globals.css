@@ -432,3 +432,32 @@ label.label {
     opacity: 0.55;
   }
 }
+
+/* ───────────── Art House: living view (opt-in, colours unchanged) ───────────── */
+@layer components {
+  .living-art {
+    animation: living-breathe 9s ease-in-out infinite;
+    overflow: hidden;
+  }
+  .living-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 244, 220, 0.16) 50%, transparent 70%);
+    background-size: 250% 100%;
+    mix-blend-mode: soft-light;
+    animation: living-sheen 9s ease-in-out infinite;
+  }
+  @keyframes living-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.015); }
+  }
+  @keyframes living-sheen {
+    0% { background-position: 120% 0; }
+    100% { background-position: -120% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .living-art, .living-art::after { animation: none; }
+  }
+}

@@ -3,7 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getArtwork, moreFromArtist } from "@/lib/queries/public";
 import { getSessionUser } from "@/lib/auth/session";
-import { GenerativeArt } from "@/components/art/GenerativeArt";
+import { ArtworkStage } from "@/components/art/ArtworkStage";
+import { SaveButton } from "@/components/art/CollectButtons";
+import { formatPrice } from "@/lib/art/assistant";
+import { savedArtworkIds } from "@/lib/queries/art";
 import { ArtworkCard } from "@/components/cards";
 import { DemoBanner } from "@/components/ui/badges";
 import { Shelf } from "@/components/ui/Shelf";
@@ -24,9 +27,10 @@ export default async function ArtworkPage({ params }: Props) {
   const w = await getArtwork((await params).slug);
   if (!w) notFound();
   const [user, more] = await Promise.all([getSessionUser(), moreFromArtist(w.artist.slug, w.id)]);
+  const saved = user ? (await savedArtworkIds(user.id, [w.id])).has(w.id) : false;
   const price =
     w.availability === "AVAILABLE" && w.priceAmount && w.priceCurrency
-      ? new Intl.NumberFormat("en", { style: "currency", currency: w.priceCurrency, maximumFractionDigits: 0 }).format(Number(w.priceAmount))
+      ? formatPrice(Number(w.priceAmount), w.priceCurrency)
       : w.availability === "ON_REQUEST" || w.availability === "AVAILABLE"
         ? "Price on request"
         : null;
@@ -43,22 +47,23 @@ export default async function ArtworkPage({ params }: Props) {
       <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-12 lg:py-14">
         {/* Art-first stage: true ratio, true colour, minimal chrome */}
         <div className="flex items-center justify-center bg-bg lg:min-h-[78vh]">
-          <figure className="w-full" style={{ maxWidth: `min(100%, ${Math.round(78 * w.aspectRatio)}vh)` }}>
-            <GenerativeArt seed={w.generativeSeed ?? 1} ratio={w.aspectRatio} title={w.title} className="shadow-[0_30px_80px_rgba(0,0,0,0.6)]" />
-            <figcaption className="sr-only">{w.title} by {w.artist.name}</figcaption>
-          </figure>
+          <ArtworkStage seed={w.generativeSeed ?? 1} ratio={w.aspectRatio} title={`${w.title} by ${w.artist.name}`} dimensions={w.dimensions} />
         </div>
         <aside className="lg:sticky lg:top-[100px] lg:self-start">
           <nav aria-label="Breadcrumb" className="mb-5 text-[12px] tracking-[0.14em] text-faint uppercase">
             <Link href="/art" className="hover:text-ink">Art</Link>
           </nav>
-          <h1 className="display text-[clamp(2.25rem,4vw,3.25rem)] leading-tight">{w.title}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="display text-[clamp(2.25rem,4vw,3.25rem)] leading-tight">{w.title}</h1>
+            <SaveButton artworkId={w.id} initial={saved} signedIn={!!user} next={`/art/${w.slug}`} compact />
+          </div>
           <p className="mt-3 text-[17px]">
             <Link href={`/artists/${w.artist.slug}`} className="link-gold">{w.artist.name}</Link>
             <span className="text-muted">{w.year ? `, ${w.year}` : ""}</span>
           </p>
           <dl className="mt-8 space-y-3 border-t border-white/10 pt-6 text-[14px]">
             {[
+              ["Category", w.category],
               ["Medium", w.medium],
               ["Dimensions", w.dimensions],
               ["Edition", w.editionSize ? `${w.editionNumber ?? "—"} of ${w.editionSize}` : "Unique work"],

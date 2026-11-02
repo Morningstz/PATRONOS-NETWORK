@@ -4,27 +4,7 @@
  * ratio and in full colour (artworks are never desaturated or cropped).
  */
 
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const PALETTES: string[][] = [
-  ["#1d1a17", "#c4532d", "#e9c46a", "#f4ede1", "#2a4b5c"],
-  ["#0f1c2e", "#3e7cb1", "#9fd3c7", "#f2efe7", "#e07a5f"],
-  ["#2b2118", "#a0522d", "#d9a066", "#efe2cc", "#5b6e4f"],
-  ["#111111", "#e8e1d4", "#b8a993", "#6b5e4f", "#d1452f"],
-  ["#1a2421", "#3f7d5c", "#c9d6a3", "#f3f0e6", "#c7883c"],
-  ["#22142b", "#8c3b6b", "#e58f65", "#f6e7cf", "#3c6e8f"],
-  ["#f1ebe0", "#1f2d3d", "#c0392b", "#e6b33e", "#7d8f85"],
-  ["#0c2230", "#d96c3f", "#f2c14e", "#e9e4d9", "#5a8f7b"],
-];
+import { mulberry32, PALETTES } from "@/lib/art/generative";
 
 type Props = {
   seed: number;
